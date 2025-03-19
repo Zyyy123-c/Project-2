@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Bird Game</title>
+  <style>
+    @-webkit-keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298, #a8c0ff);
+      background-size: 300% 300%;
+      -webkit-animation: gradientShift 15s ease infinite;
+      animation: gradientShift 15s ease infinite;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    h1 {
+      color: #fff;
+    }
+    /* Enhanced timer styling for a basketball theme */
+    #scoreDisplay, #timerDisplay, #pairingTimerDisplay {
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      background-color: #ff4500;  /* Basketball orange */
+      padding: 10px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 10px;
+    }
+    .game-board {
+      display: grid;
+      grid-template-columns: repeat(4, 150px);
+      grid-gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+    .card {
+      width: 150px;
+      height: 150px;
+      perspective: 1000px;
+      cursor: pointer;
+      opacity: 1;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .card.flip .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .card-front {
+      transform: rotateY(180deg);
+    }
+    .card-back {
+      background-color: #1e90ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 48px;
+    }
+    /* Fade-out animation for matched cards */
+    .card.fade-out {
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+    /* End screen overlay with fade-in animation */
+    #endScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1001;
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    #endScreen h2 {
+      margin-bottom: 20px;
+      font-size: 36px;
+    }
+    #endScreen p {
+      font-size: 24px;
+      margin-bottom: 30px;
+    }
+    #endScreen button {
+      padding: 10px 20px;
+      font-size: 20px;
+      border: none;
+      border-radius: 5px;
+      background-color: #1e90ff;
+      color: #fff;
+      cursor: pointer;
+    }
+    #endScreen button:hover {
+      background-color: #007acc;
+    }
+    /* Start Screen Overlay */
+    #startScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1001;
+      color: #fff;
+    }
+    #startScreen h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    #startScreen button {
+      font-size: 24px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      background-color: #1e90ff;
+      color: #fff;
+      cursor: pointer;
+    }
+    #startScreen button:hover {
+      background-color: #007acc;
+    }
+  </style>
+</head>
+<body>
+  <!-- Start Screen Overlay -->
+  <div id="startScreen">
+    <h1>Flappy Bird</h1>
+    <button onclick="startGame()">Start</button>
+  </div>
+
+  <!-- The game canvas -->
+  <canvas id="gameCanvas" width="320" height="480"></canvas>
+
+  <!-- End Screen Overlay -->
+  <div id="endScreen">
+    <h2 id="endTitle">Game Over!</h2>
+    <p id="finalScore">Your Score: 0 (Time: 0s)</p>
+    <p id="bestScore">Best: 0</p>
+    <button onclick="showStartScreen()">OK</button>
+  </div>
+
+  <script>
+    /* ----- GLOBAL VARIABLES ----- */
+    let gameState = "start"; // "start", "playing", "gameover"
+    let bestScore = localStorage.getItem("bestScore") || 0;
+
+    // Get canvas and context
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // ---------------------------------------------------------------------
+    // INITIALIZATION FUNCTION: Resets variables for a new game.
+    function initGame() {
+      // Adjusted Bird Physics for easier play:
+      bird = {
+        x: 50,
+        y: 150,
+        width: 30,
+        height: 30,
+        velocity: 0,
+        gravity: 0.3,         // Reduced gravity
+        jumpStrength: -6      // Reduced jump strength
+      };
+      pipes = [];
+      frameCount = 0;
+      score = 0;
+      gameOver = false;
+      // Start overall timer
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+    // ---------------------------------------------------------------------
+
+    // GLOBAL GAME TIMER UPDATE (shows elapsed time)
+    function updateTimer() {
+      const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+      // (Optional: Display elapsed time on canvas if desired)
+    }
+
+    // Listen for keydown and mouse events for bird jump
+    document.addEventListener('keydown', function(e) {
+      if (gameState !== "playing") return;
+      if (e.code === 'Space') {
+        birdJump();
+      }
+    });
+    document.addEventListener('mousedown', function() {
+      if (gameState !== "playing") return;
+      birdJump();
+    });
+
+    function birdJump() {
+      bird.velocity = bird.jumpStrength;
+    }
+
+    // Create a new pipe (top and bottom)
+    function createPipe() {
+      const pipeWidth = 50;
+      // Increased pipe gap for easier navigation:
+      const pipeGap = 140; // (was 100)
+      const minPipeHeight = 50;
+      const maxPipeHeight = canvas.height - pipeGap - minPipeHeight;
+      const topPipeHeight = Math.floor(Math.random() * (maxPipeHeight - minPipeHeight + 1)) + minPipeHeight;
+      const bottomPipeHeight = canvas.height - topPipeHeight - pipeGap;
+      pipes.push({
+        x: canvas.width,
+        top: topPipeHeight,
+        bottom: bottomPipeHeight,
+        width: pipeWidth
+      });
+    }
+
+    // Update game state
+    function update() {
+      frameCount++;
+      // Bird physics
+      bird.velocity += bird.gravity;
+      bird.y += bird.velocity;
+
+      // Collision with ground or ceiling
+      if(bird.y + bird.height > canvas.height || bird.y < 0) {
+        gameOver = true;
+      }
+
+      // Create a new pipe every 100 frames (was every 90 frames) for easier play
+      if(frameCount % 100 === 0) {
+        createPipe();
+      }
+
+      // Move pipes to the left (reduced speed for easier reaction)
+      for(let i = 0; i < pipes.length; i++){
+        pipes[i].x -= 1.5; // (was 2)
+      }
+
+      // Remove pipes that have moved off screen and update score
+      if(pipes.length && pipes[0].x + pipes[0].width < 0){
+        pipes.shift();
+        score++;
+      }
+
+      // Check for collisions with pipes
+      for(let i = 0; i < pipes.length; i++){
+        let p = pipes[i];
+        if(bird.x < p.x + p.width && bird.x + bird.width > p.x) {
+          if(bird.y < p.top || bird.y + bird.height > canvas.height - p.bottom) {
+            gameOver = true;
+          }
+        }
+      }
+    }
+
+    // Draw everything on the canvas
+    function draw() {
+      // Clear canvas
+      ctx.fillStyle = '#70c5ce';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw bird
+      ctx.fillStyle = '#FF0';
+      ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+
+      // Draw pipes
+      ctx.fillStyle = '#000';
+      for(let i = 0; i < pipes.length; i++){
+        let p = pipes[i];
+        // Draw top pipe
+        ctx.fillRect(p.x, 0, p.width, p.top);
+        // Draw bottom pipe
+        ctx.fillRect(p.x, canvas.height - p.bottom, p.width, p.bottom);
+      }
+
+      // Draw the score
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px Arial';
+      ctx.fillText("Score: " + score, 10, 25);
+    }
+
+    // Game loop
+    function loop() {
+      if (gameState !== "playing") return;
+      update();
+      draw();
+      if(gameOver) {
+        clearInterval(timerInterval);
+        const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+        showEndScreen(elapsedTime);
+        return;
+      }
+      requestAnimationFrame(loop);
+    }
+
+    // ---------------------------------------------------------------------
+    // START GAME: Called when the user clicks "Start" on the start screen.
+    function startGame() {
+      document.getElementById("startScreen").style.display = "none";
+      document.getElementById("endScreen").style.display = "none";
+      gameState = "playing";
+      initGame();
+      loop();
+    }
+    // ---------------------------------------------------------------------
+
+    // SHOW END SCREEN: Called when the game is over.
+    function showEndScreen(elapsedTime) {
+      gameState = "gameover";
+      if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem("bestScore", bestScore);
+      }
+      document.getElementById("endTitle").innerText = "Game Over!";
+      document.getElementById("finalScore").innerText = "Your Score: " + score;
+      document.getElementById("bestScore").innerText = "Best: " + bestScore;
+      document.getElementById("endScreen").style.display = "flex";
+    }
+    // ---------------------------------------------------------------------
+
+    // SHOW START SCREEN: Called when the user clicks "OK" on the end screen.
+    function showStartScreen() {
+      gameState = "start";
+      document.getElementById("endScreen").style.display = "none";
+      document.getElementById("startScreen").style.display = "flex";
+      // Optionally, clear the canvas.
+    }
+    // ---------------------------------------------------------------------
+
+  </script>
+</body>
+</html>

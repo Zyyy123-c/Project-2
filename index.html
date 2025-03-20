@@ -81,7 +81,10 @@
       50% { transform: translateY(-20px); }
       100% { transform: translateY(0); }
     }
-    #startScreen button {
+    /* Button styling now uses the pixelated font as well */
+    #startScreen button, 
+    #endScreen button {
+      font-family: 'Press Start 2P', cursive;
       font-size: 16px;
       padding: 10px 20px;
       border: none;
@@ -90,7 +93,8 @@
       color: #fff;
       cursor: pointer;
     }
-    #startScreen button:hover {
+    #startScreen button:hover,
+    #endScreen button:hover {
       background-color: #007acc;
     }
     /* End Screen */
@@ -104,18 +108,6 @@
     #endScreen p {
       font-size: 16px;
       margin-bottom: 20px;
-    }
-    #endScreen button {
-      font-size: 16px;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      background-color: #1e90ff;
-      color: #fff;
-      cursor: pointer;
-    }
-    #endScreen button:hover {
-      background-color: #007acc;
     }
   </style>
 </head>
@@ -148,11 +140,13 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Load pixel art assets for the bird and pipe
+    // Load pixel art assets for the bird, pipe, and background image
     const birdImage = new Image();
     birdImage.src = "https://github.com/samuelcust/flappy-bird-assets/blob/master/sprites/redbird-downflap.png?raw=true";
     const pipeImage = new Image();
     pipeImage.src = "https://github.com/samuelcust/flappy-bird-assets/blob/master/sprites/pipe-green.png?raw=true";
+    const backgroundImage = new Image();
+    backgroundImage.src = "https://github.com/samuelcust/flappy-bird-assets/blob/master/sprites/background-day.png?raw=true";
 
     // Game variables
     let bird, pipes, frameCount, score, gameOver;
@@ -257,8 +251,8 @@
 
     // Draw game elements using pixel art assets
     function draw() {
-      ctx.fillStyle = '#70c5ce';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Draw the background image covering the whole canvas
+      ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
 
       // Draw bird
       ctx.drawImage(birdImage, bird.x, bird.y, bird.width, bird.height);
